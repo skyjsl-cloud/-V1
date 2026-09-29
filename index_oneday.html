@@ -265,6 +265,23 @@ details.rq .qcard{border-radius:0;border:0;border-top:1px solid var(--line);box-
 .band.rv{border-color:var(--pencil);background:color-mix(in srgb,var(--pencil) 18%,var(--paper));color:var(--ink)}
 .rvline{font-size:14px;margin:-4px 0 14px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--pencil) 12%,var(--paper))}
 .rvline b{font-family:var(--display);font-weight:400;margin-right:6px}
+.padbtn{margin-top:10px;border-style:dashed}
+.padbtn.on{background:color-mix(in srgb,var(--math) 12%,var(--paper));border-color:var(--math);border-style:solid}
+#pad{position:fixed;left:0;right:0;bottom:0;height:48vh;z-index:9;background:var(--paper);border-top:3px solid var(--math);box-shadow:0 -10px 30px -12px rgba(0,0,0,.35);display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px)}
+#pad[hidden]{display:none!important}
+.padhead{display:flex;align-items:center;gap:8px;padding:8px 12px 4px;flex:none}
+.padbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:4px 10px 8px;border-bottom:1px solid var(--line);flex:none}
+.padtitle{font-family:var(--display);font-size:16px;margin-right:4px;white-space:nowrap}
+.padbar button{flex:none;display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);background:var(--paper2);border-radius:10px;padding:6px 9px;font-size:14px;white-space:nowrap}
+.padbar button svg{width:18px;height:18px}
+.padbar button.on{border-color:var(--ink);background:var(--ink);color:var(--paper)}
+.padclear{margin-left:auto;flex:none;border:1.5px solid var(--line);background:var(--paper2);border-radius:10px;padding:6px 10px;font-size:14px}
+.padclose{flex:none;border-radius:10px;padding:6px 14px;border:1.5px solid var(--pencil);background:var(--pencil);border-color:var(--pencil);color:var(--pencil-ink);font-family:var(--display);font-size:15px}
+.dotc{width:12px;height:12px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1.5px var(--paper)}
+#padc{flex:1;width:100%;min-height:0;display:block;touch-action:none;cursor:crosshair;
+  background-color:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+body.padopen .wrap{padding-bottom:calc(48vh + 24px)}
+body.padopen .nav{display:none}
 /* 공유 카드 */
 .sharecard{border:2px solid var(--ink);border-radius:16px;padding:16px 18px;background:var(--paper2);text-align:left;position:relative;overflow:hidden}
 .sharecard .who{font-size:14px;color:var(--ink2)}
@@ -303,6 +320,16 @@ details.rq .qcard{border-radius:0;border:0;border-top:1px solid var(--line);box-
 
 <div id="sheet" hidden></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="pad" hidden>
+  <div class="padhead"><span class="padtitle">연습장</span><span class="muted small">손가락으로 써요</span><button data-pad="clear" class="padclear" aria-label="모두 지우기">전체 지우기</button><button data-pad="close" class="padclose" aria-label="연습장 닫기">닫기</button></div>
+  <div class="padbar">
+    <button data-pad="pen" class="on" aria-label="검은 펜"><i class="dotc" style="background:var(--ink)"></i>펜</button>
+    <button data-pad="red" aria-label="빨간 펜"><i class="dotc" style="background:#D6402B"></i>빨강</button>
+    <button data-pad="eraser" aria-label="지우개"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h10"/><path d="M5.5 14.5l8-8a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L12 18H8.5z"/></svg>지우개</button>
+    <button data-pad="undo" aria-label="되돌리기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>되돌리기</button>
+  </div>
+  <canvas id="padc" aria-label="손가락으로 계산을 쓰는 연습장"></canvas>
+</div>
 
 <script>
 /*
@@ -3468,7 +3495,7 @@ function render(){
   else if(ui.tab==='book')v.innerHTML=viewBook();
   else if(ui.tab==='rest')v.innerHTML=viewRest();
   else v.innerHTML=viewNote();
-  tick();
+  tick();padSync();
   if(ui.tab==='book'&&ui.flash){const el=document.getElementById('c-'+ui.flash);if(el){el.scrollIntoView({block:'start'});el.classList.add('flash')}ui.flash=null}
 }
 function segs(cur){return'<div class="segbar">'+D.qs.map((q,i)=>{const a=D.ans[i];const st=a==null?'':a===q.a?'ok':'no';return'<div class="seg s-'+q.s+' '+st+(i===cur?' cur':'')+'" title="'+(i+1)+'번 '+SUBJ[q.s]+'"></div>'}).join('')+'</div>'}
@@ -3516,7 +3543,7 @@ function viewQuiz(){
   else act='<button class="btn primary" data-act="next">'+(firstOpen()===-1?(last?'결과 보기':'다음 풀이 보기'):last?'남은 문제로':'다음 문제')+'</button>';
   return'<div class="qtop"><button class="ghost" data-act="exit">← 처음 화면</button><span class="qpos">'+(i+1)+' / '+D.qs.length+'</span></div>'+segs(i)+
   '<article class="qcard s-'+q.s+'">'+cardHTML(q,picked,ui.hint)+'</article><div class="qactions">'+
-  (i>0?'<button class="btn line" data-act="prev" style="flex:0 0 auto">이전</button>':'')+act+'</div>';
+  (i>0?'<button class="btn line" data-act="prev" style="flex:0 0 auto">이전</button>':'')+act+'</div>'+(q.s==='math'||q.s==='sci'?'<button class="btn line block padbtn'+(PAD.open?' on':'')+'" data-act="pad">'+(PAD.open?'연습장 닫기':'연습장 열기 (손으로 계산하기)')+'</button>':'');
 }
 function viewResult(){
   const n=D.qs.length;let c=0;const by={};
@@ -3607,7 +3634,7 @@ function examRun(){
     q.c.map((c,k)=>'<button class="ch'+(p===k?' sel':'')+'" data-act="expick" data-i="'+k+'"><span class="n">'+NUMS[k]+'</span><span>'+fx(c)+'</span></button>').join('')+'</div>';
   return'<div class="exhead"><div><div class="t">'+examTitle(E.subj)+' 모의고사</div><div class="muted small">'+(n-left)+' / '+n+' 표시함</div></div><div class="timer'+(rm!=null&&rm<300?' low':'')+'" id="timer">'+(rm==null?'시간 제한 없음':mmss(rm))+'</div></div>'+
   '<article class="qcard s-'+q.s+'" style="margin-top:12px">'+card+'</article>'+
-  '<div class="qactions">'+(i>0?'<button class="btn line" data-act="exnav" data-d="-1">이전</button>':'')+(i<n-1?'<button class="btn primary" data-act="exnav" data-d="1">다음</button>':'<button class="btn primary" data-act="exsubmit">답안 제출</button>')+'</div>'+
+  '<div class="qactions">'+(i>0?'<button class="btn line" data-act="exnav" data-d="-1">이전</button>':'')+(i<n-1?'<button class="btn primary" data-act="exnav" data-d="1">다음</button>':'<button class="btn primary" data-act="exsubmit">답안 제출</button>')+'</div>'+(q.s==='math'||q.s==='sci'?'<button class="btn line block padbtn'+(PAD.open?' on':'')+'" data-act="pad">'+(PAD.open?'연습장 닫기':'연습장 열기 (손으로 계산하기)')+'</button>':'')+
   '<section class="card" style="margin-top:14px"><h3>OMR 답안표</h3><div class="omr">'+E.qs.map((_,k)=>'<button class="'+(E.ans[k]!=null?'done':'')+(k===i?' cur':'')+'" data-act="exgo" data-i="'+k+'" aria-label="'+(k+1)+'번">'+(k+1)+'</button>').join('')+'</div>'+
   (ui.exConfirm?'<div class="confirm"><p>'+(left?'아직 표시하지 않은 문항이 <b>'+left+'개</b> 있어요. 그래도 제출할까요?':'모든 문항에 답했어요. 제출할까요?')+'</p><div class="row"><button class="btn primary" data-act="exfinal">제출하기</button><button class="btn line" data-act="excancel">계속 풀기</button></div></div>'
   :'<button class="btn line block" style="margin-top:12px" data-act="exsubmit">답안 제출</button>')+
@@ -3980,6 +4007,39 @@ function viewRest(){
   '<section class="card gamecard">'+(g==='chess'?viewChess():goMode()==='learn'?viewLearn():viewGo())+'</section></div>';
 }
 
+/* ============ 연습장 (손으로 계산 쓰기) ============ */
+const PAD={open:false,tool:'pen',key:null,pages:{},drawing:null};
+function padKey(){if(ui.tab==='today'&&ui.quiz&&D&&ui.idx<D.qs.length)return'd'+D.date+'-'+ui.idx;if(ui.tab==='exam'&&E&&!E.done)return'x'+E.start+'-'+ui.exIdx;return null}
+function padStrokes(){const k=PAD.key;if(!k)return[];return PAD.pages[k]||(PAD.pages[k]=[])}
+function padCanvas(){return document.getElementById('padc')}
+function padResize(){const c=padCanvas();if(!c||PAD.open===false)return;const r=c.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  c.width=Math.max(1,Math.round(r.width*dpr));c.height=Math.max(1,Math.round(r.height*dpr));const g=c.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);padRedraw()}
+function padInk(){return getComputedStyle(document.body).color||'#1C2533'}
+function padDrawStroke(g,st){if(!st.p.length)return;g.save();g.lineCap='round';g.lineJoin='round';
+  if(st.t==='eraser'){g.globalCompositeOperation='destination-out';g.lineWidth=22}else{g.globalCompositeOperation='source-over';g.strokeStyle=st.t==='red'?'#D6402B':padInk();g.lineWidth=2.8}
+  g.beginPath();g.moveTo(st.p[0][0],st.p[0][1]);if(st.p.length===1)g.lineTo(st.p[0][0]+.1,st.p[0][1]+.1);
+  for(let i=1;i<st.p.length;i++){const a=st.p[i-1],b=st.p[i];g.quadraticCurveTo(a[0],a[1],(a[0]+b[0])/2,(a[1]+b[1])/2)}
+  g.stroke();g.restore()}
+function padRedraw(){const c=padCanvas();if(!c)return;const g=c.getContext('2d');g.save();g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,c.width,c.height);g.restore();padStrokes().forEach(st=>padDrawStroke(g,st))}
+function padSync(){const k=padKey();
+  if(!k&&PAD.open)padShow(false);
+  if(k!==PAD.key){PAD.key=k;if(PAD.open)padRedraw()}}
+function padShow(on){PAD.open=on;const el=document.getElementById('pad');el.hidden=!on;document.body.classList.toggle('padopen',on);
+  if(on){PAD.key=padKey();requestAnimationFrame(padResize)}}
+(function(){const c=padCanvas();if(!c)return;
+  const pt=e=>{const r=c.getBoundingClientRect();return[Math.round((e.clientX-r.left)*10)/10,Math.round((e.clientY-r.top)*10)/10]};
+  c.addEventListener('pointerdown',e=>{if(!PAD.key)return;e.preventDefault();try{c.setPointerCapture(e.pointerId)}catch(_){}
+    PAD.drawing={t:PAD.tool,p:[pt(e)]};padStrokes().push(PAD.drawing);padRedraw()});
+  c.addEventListener('pointermove',e=>{if(!PAD.drawing)return;e.preventDefault();const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+    evs.forEach(ev=>PAD.drawing.p.push(pt(ev)));padRedraw()});
+  const end=()=>{PAD.drawing=null};c.addEventListener('pointerup',end);c.addEventListener('pointercancel',end);c.addEventListener('pointerleave',end);
+  document.getElementById('pad').addEventListener('click',e=>{const b=e.target.closest('[data-pad]');if(!b)return;const a=b.dataset.pad;
+    if(a==='close'){padShow(false);render();return}
+    if(a==='undo'){padStrokes().pop();padRedraw();return}
+    if(a==='clear'){if(PAD.key)PAD.pages[PAD.key]=[];padRedraw();return}
+    PAD.tool=a;document.querySelectorAll('#pad [data-pad]').forEach(x=>x.classList.toggle('on',x.dataset.pad===a))});
+  window.addEventListener('resize',()=>{if(PAD.open)padResize()});
+})();
 /* ============ 동작 ============ */
 function addWrong(q){W=W.filter(w=>w.id!==q.id);W.unshift(Object.assign({},q,{date:D.date}));if(W.length>150)W.length=150;store.set('wrong',W)}
 document.addEventListener('click',e=>{
@@ -4008,6 +4068,7 @@ document.addEventListener('click',e=>{
   case'nremove':W=W.filter(w=>w.id!==t.dataset.id);delete ui.note[t.dataset.id];store.set('wrong',W);break;
   case'nretry':delete ui.note[t.dataset.id];break;
   case'settings':$('#sheet').innerHTML=viewSheet();$('#sheet').hidden=false;return;
+  case'pad':padShow(!PAD.open);break;
   case'gtab':ui.game=t.dataset.g;break;
   case'csq':chessTap(+t.dataset.i);return;
   case'gpt':goTap(+t.dataset.i);return;
@@ -4047,6 +4108,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{if(e.target.id==='nick'){S.nick=e.target.value.trim();store.set('settings',S);return}if(e.target.id==='bsearch'){ui.bookQ=e.target.value;const pos=e.target.selectionStart;render();const s=$('#bsearch');s.focus();try{s.setSelectionRange(pos,pos)}catch(_){}}});
 /* 안드로이드 뒤로 가기 버튼용 */
 window.appBack=function(){
+  if(PAD.open){padShow(false);render();return true}
   if(!$('#sheet').hidden){$('#sheet').hidden=true;render();return true}
   if(ui.tab==='exam'&&E&&!E.done){if(!ui.exQuit){ui.exQuit=true;render()}return true}
   if(ui.tab!=='today'){ui.tab='today';render();return true}
