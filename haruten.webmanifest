@@ -1,0 +1,12 @@
+{
+  "name": "하루 열 문제",
+  "short_name": "하루 열 문제",
+  "start_url": "./haruten.html",
+  "display": "standalone",
+  "background_color": "#EEF2F5",
+  "theme_color": "#EEF2F5",
+  "icons": [
+    {"src": "haruten-icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "haruten-icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}
